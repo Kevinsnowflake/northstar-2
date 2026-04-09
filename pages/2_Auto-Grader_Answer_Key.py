@@ -2,12 +2,26 @@ from __future__ import annotations
 
 import re
 
+import requests
 import streamlit as st
 import streamlit.components.v1 as components
 
+ANSWER_KEYS: dict[str, str] = {
+    "Data Ingestion, Transformation, and Delivery with Snowflake":
+        "https://raw.githubusercontent.com/Snowflake-Labs/builder-workshops/main/data-eng/ingestion-transformation-delivery.sql",
+    "Build an Automated Data Pipeline with Snowpipe":
+        "https://raw.githubusercontent.com/Snowflake-Labs/builder-workshops/main/data-eng/snowpipe-streaming.sql",
+    "Building Intelligent Data Application with Snowflake":
+        "https://raw.githubusercontent.com/Snowflake-Labs/builder-workshops/main/gen-ai/snowflake-intelligence.sql",
+    "Creating Declarative Data Pipelines with Dynamic Tables":
+        "https://raw.githubusercontent.com/Snowflake-Labs/builder-workshops/main/data-eng/dynamic-tables.sql",
+    "From Zero to Agents: Building End-To-End Data Pipelines for an AI Agent (Data for Breakfast HOL)":
+        "https://raw.githubusercontent.com/Snowflake-Labs/builder-workshops/main/gen-ai/zero-agent.sql",
+}
 
-st.set_page_config(page_title="Auto-grader Set Up", page_icon="👋", layout="wide")
-st.title("👋 Auto-grader Set Up")
+WORKSHOP_OPTIONS = ["None (auto-grader setup only)"] + list(ANSWER_KEYS.keys())
+
+st.title("⚙️ Auto-Grader/Answer Key")
 
 
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -49,6 +63,7 @@ with left:
     st.caption("Fields marked with * are required.")
 
     with st.form("greeting_form"):
+        workshop = st.selectbox("Workshop *", WORKSHOP_OPTIONS)
         email = st.text_input("Email *", placeholder="name@company.com")
         c1, c2 = st.columns(2)
         with c1:
@@ -62,20 +77,13 @@ with left:
     error_container = st.container()
 
 with right:
-    st.subheader("Instructions")
+    st.subheader("How to Use")
     st.markdown(
         """
-1. Fill in your information to generate your auto-grader set up, then click "Generate SQL". Copy the full SQL. Be sure to use the same email address that you used to register for the event.
-2. Open a new SQL worksheet in the Snowflake account you used to complete the lab.
-3. Paste the generated script from Step 1 in the worksheet.
-4. Run the script in full.
-5. Copy and paste the full answer key relevant to your workshop in a worksheet and run the entire script:
-    * [Data Engineering](https://github.com/Snowflake-Labs/builder-workshops/blob/main/data-eng/ingestion-transformation-delivery.sql)
-    * [Snowpipe Streaming](https://github.com/Snowflake-Labs/builder-workshops/blob/main/data-eng/snowpipe-streaming.sql)
-    * [Snowflake Intelligence](https://github.com/Snowflake-Labs/builder-workshops/blob/main/gen-ai/snowflake-intelligence.sql)
-    * [Dynamic Table](https://github.com/Snowflake-Labs/builder-workshops/blob/main/data-eng/dynamic-tables.sql)
-    * [From Zero to Agents (Data For Break HOL)](https://github.com/Snowflake-Labs/builder-workshops/blob/main/gen-ai/zero-agent.sql)
-6. If you passed the lab, you should see an output in the Snowflake console with a message like "You've successfully completed this lab!". Please allow up to 7 business days to receive your badge.
+1. Select your workshop from the dropdown.
+2. Fill in your information, then click "Generate SQL". Be sure to use the same email address that you used to register for the event.
+3. Open a new SQL worksheet in the Snowflake account you used to complete the lab.
+4. Paste the generated script in the worksheet and run it in full. The script includes both the auto-grader setup and the answer key for your workshop.
         """.strip()
     )
 
@@ -84,17 +92,8 @@ with right:
         """
 - **Format your name correctly** (no all-lowercase / no all-uppercase).
 - **No middle name?** Keep blank.
-- **Email must match** what they used to register.
+- **Email must match** what you used to register.
         """.strip()
-    )
-
-    st.subheader("Badge Support")
-    st.info(
-        "Learners can email **developer-badges-DL@snowflake.com** if you want to inquire "
-        "about a missing badge. Badges will be sent within 7 business days of the event. "
-        "We can only support learners if inquired within 30 days of the event. "
-        "After 30 days, we cannot guarantee support.",
-        icon="📧",
     )
 
 if not submitted:
@@ -124,14 +123,14 @@ elif not EMAIL_RE.match(email):
 
 if not first:
     errors.append("First name is required.")
-elif re.fullmatch(r"['\"""'']+", first):
-    errors.append("First name contains only quote characters — please enter your actual name.")
+elif re.fullmatch(r"['\"\u201c\u201d\u2018\u2019\s]+", first):
+    errors.append("First name contains only quote characters \u2014 please enter your actual name.")
 if not last:
     errors.append("Last name is required.")
-elif re.fullmatch(r"['\"""'']+", last):
-    errors.append("Last name contains only quote characters — please enter your actual name.")
-if middle and re.fullmatch(r"['\"""'']+", middle):
-    errors.append("Middle name contains only quote characters — leave the field blank if you don't have one.")
+elif re.fullmatch(r"['\"\u201c\u201d\u2018\u2019\s]+", last):
+    errors.append("Last name contains only quote characters \u2014 please enter your actual name.")
+if middle and re.fullmatch(r"['\"\u201c\u201d\u2018\u2019\s]+", middle):
+    errors.append("Middle name contains only quote characters \u2014 leave the field blank if you don't have one.")
 
 if errors:
     with error_container:
@@ -237,6 +236,28 @@ as 'https://awy6hshxy4.execute-api.us-west-2.amazonaws.com/dev/edu_dora/greeting
 -- Double-check your email. You must use the same email for the greeting as you used to register
 {greeting_call_sql}
 """.strip() + "\n"
+
+answer_key_sql = ""
+if workshop != "None (auto-grader setup only)" and workshop in ANSWER_KEYS:
+    with st.spinner("Fetching answer key..."):
+        try:
+            resp = requests.get(ANSWER_KEYS[workshop], timeout=15)
+            resp.raise_for_status()
+            answer_key_sql = resp.text
+        except requests.RequestException:
+            st.warning(
+                "Could not fetch the answer key from GitHub. "
+                "The auto-grader setup script is still included below.",
+                icon="⚠️",
+            )
+
+if answer_key_sql:
+    sql_out += (
+        "\n-- ============================================\n"
+        f"-- Answer Key: {workshop}\n"
+        "-- ============================================\n\n"
+        + answer_key_sql.strip() + "\n"
+    )
 
 st.divider()
 st.markdown('<div id="generated-sql"></div>', unsafe_allow_html=True)
