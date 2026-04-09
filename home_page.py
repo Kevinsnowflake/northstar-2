@@ -17,9 +17,9 @@ with col1:
     st.page_link("pages/1_Trial_Sign_Up.py", label="Go to Trial Sign Up", icon="➡️")
 
 with col2:
-    st.subheader("⚙️ Auto-Grader/Answer Key")
-    st.markdown("Generate your auto-grader and answer key SQL script.")
-    st.page_link("pages/2_Auto-Grader_Answer_Key.py", label="Go to Auto-Grader/Answer Key", icon="➡️")
+    st.subheader("⚙️ Auto-Grader")
+    st.markdown("Generate your auto-grader SQL script.")
+    st.page_link("pages/3_Auto-Grader.py", label="Go to Auto-Grader", icon="➡️")
 
 st.divider()
 
@@ -39,8 +39,8 @@ st.markdown(
     "Paste the generated script into a Snowflake SQL worksheet and run it in full."
 )
 st.page_link(
-    "pages/2_Auto-Grader_Answer_Key.py",
-    label="Go to Auto-Grader/Answer Key",
+    "pages/3_Auto-Grader.py",
+    label="Go to Auto-Grader",
     icon="⚙️",
 )
 
