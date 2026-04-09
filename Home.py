@@ -18,7 +18,8 @@ with st.sidebar:
 pages = [
     st.Page("home_page.py", title="Home", icon="❄️", default=True),
     st.Page("pages/1_Trial_Sign_Up.py", title="Trial Sign Up", icon="📝"),
-    st.Page("pages/2_Auto-Grader_Answer_Key.py", title="Auto-Grader/Answer Key", icon="⚙️"),
+    st.Page("pages/2_Guides_and_Answer_Keys.py", title="Guides & Answer Keys", icon="📚"),
+    st.Page("pages/3_Auto-Grader.py", title="Auto-Grader", icon="⚙️"),
 ]
 
 nav = st.navigation(pages)
