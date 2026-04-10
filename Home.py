@@ -9,11 +9,8 @@ EVENT_OPTIONS = ["None"] + list(EVENTS.keys())
 if "selected_event" not in st.session_state:
     st.session_state.selected_event = "None"
 
-_idx = EVENT_OPTIONS.index(st.session_state.selected_event) if st.session_state.selected_event in EVENT_OPTIONS else 0
-
 with st.sidebar:
-    chosen = st.selectbox("Select your event", EVENT_OPTIONS, index=_idx)
-    st.session_state.selected_event = chosen
+    st.selectbox("Select your event", EVENT_OPTIONS, key="selected_event")
 
 pages = [
     st.Page("home_page.py", title="Home", icon="❄️", default=True),
