@@ -1,14 +1,10 @@
 [
   {
-    "Event Name": "Australia Virtual D4B (4/16-17)",
-    "Final URL": "https://signup.snowflake.com/?trial=student&cloud=aws&region=us-west-2&utm_source=workshop&utm_campaign=northstar-2026&k=hol-snowflake-1616&t=d063cbe92edcb7508a9543ffb376d582a0ca03ca67c769390766955e45a3f19c"
-  },
-  {
-    "Event Name": "India Virtual Northstar (4/16-17)",
-    "Final URL": "https://signup.snowflake.com/?trial=student&cloud=aws&region=us-west-2&utm_source=workshop&utm_campaign=northstar-2026&k=hol-snowflake-8095&t=d7c464b3e0b93f698f6616d5453e7600feee8c468621b8bc269554d09c2da60a"
-  },
-  {
     "Event Name": "Tokyo (4/21/2026)",
+    "Final URL": "https://signup.snowflake.com/?trial=student&cloud=aws&region=us-west-2&utm_source=workshop&utm_campaign=northstar-2026"
+  },
+  {
+    "Event Name": "Edinburgh (4/22/2026)",
     "Final URL": "https://signup.snowflake.com/?trial=student&cloud=aws&region=us-west-2&utm_source=workshop&utm_campaign=northstar-2026"
   },
   {
