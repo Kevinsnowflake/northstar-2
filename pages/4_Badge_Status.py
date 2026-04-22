@@ -70,7 +70,7 @@ st.dataframe(
     column_config={
         "Event": st.column_config.TextColumn("Event", width="large"),
         "Event date": st.column_config.TextColumn("Event date", width="small"),
-        "Issued date": st.column_config.TextColumn("Issued date", width="small"),
+        "Issued date": st.column_config.TextColumn("Issued date", width="medium"),
         "Badge status": st.column_config.TextColumn("Badge status", width="small"),
     },
 )

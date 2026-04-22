@@ -7,7 +7,7 @@
 //   4. Click "GitHub Sync > Push events to GitHub" whenever you want to update the app
 //
 // Optional column: "Badges issued" — Yes/TRUE = badges sent; No/FALSE = not yet; blank = unknown (Badge status page).
-// Optional columns (archive tab recommended): "Event Date", "Issued Date" — shown on Badge status (YYYY-MM-DD when parsed as dates).
+// Optional columns (archive tab recommended): "Event Date"; "Issued Date" (or "Date Issued", etc.) — Badge status table (YYYY-MM-DD when parsed as dates).
 //
 // Archive: set SHEET_ARCHIVE to your archive tab name so expired rows stay in events.json (e.g. badge status).
 // Main tab order is preserved; archived events appear after, only if not already on the main tab.
@@ -132,6 +132,37 @@ function getMainSheet_(ss) {
 }
 
 /**
+ * Match sheet header (trim, collapse spaces, ignore NBSP, case-insensitive).
+ * @param {Array} headers
+ * @param {Array<string>} candidates — first match wins
+ * @returns {number}
+ */
+function findHeaderCol_(headers, candidates) {
+  function norm(s) {
+    return String(s)
+      .replace(/\u00a0/g, " ")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  }
+  var norms = [];
+  var j;
+  for (j = 0; j < headers.length; j++) {
+    norms.push(norm(headers[j]));
+  }
+  var c;
+  for (c = 0; c < candidates.length; c++) {
+    var want = norm(candidates[c]);
+    for (j = 0; j < norms.length; j++) {
+      if (norms[j] === want) {
+        return j;
+      }
+    }
+  }
+  return -1;
+}
+
+/**
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
  * @returns {Object[]} event rows for JSON
  */
@@ -144,8 +175,16 @@ function sheetToEvents_(sheet) {
   var nameCol = headers.indexOf("Event Name");
   var urlCol = headers.indexOf("Final URL");
   var badgeCol = headers.indexOf("Badges issued");
-  var eventDateCol = headers.indexOf("Event Date");
-  var issuedDateCol = headers.indexOf("Issued Date");
+  var eventDateCol = findHeaderCol_(headers, ["Event Date", "event date"]);
+  var issuedDateCol = findHeaderCol_(headers, [
+    "Issued Date",
+    "Issued date",
+    "Date Issued",
+    "date issued",
+    "Badge issued date",
+    "Badge Issued Date",
+    "Badge issue date",
+  ]);
 
   if (nameCol === -1 || urlCol === -1) {
     throw new Error("Tab \"" + sheet.getName() + "\" must have columns: Event Name, Final URL");
@@ -184,6 +223,13 @@ function formatDateCell_(cell) {
   }
   if (Object.prototype.toString.call(cell) === "[object Date]" && !isNaN(cell)) {
     return Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  if (typeof cell === "number" && isFinite(cell)) {
+    var epoch = new Date(1899, 11, 30);
+    var d = new Date(epoch.getTime() + cell * 86400000);
+    if (!isNaN(d.getTime())) {
+      return Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    }
   }
   var s = String(cell).trim();
   return s || null;

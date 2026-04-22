@@ -12,8 +12,22 @@ _EVENTS_FILE = pathlib.Path(__file__).parent / "events.json"
 def _optional_str(raw: Any) -> str | None:
     if raw is None:
         return None
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        if isinstance(raw, float) and raw.is_integer():
+            raw = int(raw)
+        s = str(raw).strip()
+        return s if s else None
     s = str(raw).strip()
     return s if s else None
+
+
+def _first_header_str(row: dict[str, Any], keys: tuple[str, ...]) -> str | None:
+    """First non-empty value among possible JSON / sheet key spellings."""
+    for k in keys:
+        v = _optional_str(row.get(k))
+        if v:
+            return v
+    return None
 
 
 def _parse_badges_issued(raw: Any) -> bool | None:
@@ -65,8 +79,21 @@ def load_event_records() -> dict[str, dict[str, Any]]:
                 "final_url": r.get("Final URL") or None,
                 "badges_issued": _parse_badges_issued(r.get("Badges issued")),
                 "archived": archived,
-                "event_date": _optional_str(r.get("Event Date")),
-                "issued_date": _optional_str(r.get("Issued Date")),
+                "event_date": _first_header_str(
+                    r,
+                    ("Event Date", "event_date", "Event date"),
+                ),
+                "issued_date": _first_header_str(
+                    r,
+                    (
+                        "Issued Date",
+                        "Issued date",
+                        "issued_date",
+                        "Date Issued",
+                        "date_issued",
+                        "IssuedDate",
+                    ),
+                ),
             }
         return out
     except (json.JSONDecodeError, KeyError, TypeError):
