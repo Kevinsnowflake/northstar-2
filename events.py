@@ -9,6 +9,13 @@ import streamlit as st
 _EVENTS_FILE = pathlib.Path(__file__).parent / "events.json"
 
 
+def _optional_str(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    return s if s else None
+
+
 def _parse_badges_issued(raw: Any) -> bool | None:
     """Normalize JSON / sheet values to True (issued), False (not yet), or None (unknown)."""
     if raw is None:
@@ -39,6 +46,8 @@ def load_event_records() -> dict[str, dict[str, Any]]:
       - ``final_url``: str | None (trial signup link)
       - ``badges_issued``: bool | None — True if badges sent, False if not yet, None if unset
       - ``archived``: bool — True if row came from the archive tab only (see Apps Script merge)
+      - ``event_date``: str | None — optional, from sheet "Event Date"
+      - ``issued_date``: str | None — optional, from sheet "Issued Date"
     """
     try:
         data = json.loads(_EVENTS_FILE.read_text())
@@ -56,6 +65,8 @@ def load_event_records() -> dict[str, dict[str, Any]]:
                 "final_url": r.get("Final URL") or None,
                 "badges_issued": _parse_badges_issued(r.get("Badges issued")),
                 "archived": archived,
+                "event_date": _optional_str(r.get("Event Date")),
+                "issued_date": _optional_str(r.get("Issued Date")),
             }
         return out
     except (json.JSONDecodeError, KeyError, TypeError):

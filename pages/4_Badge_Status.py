@@ -8,9 +8,13 @@ st.title("🏅 Badge status")
 
 st.caption(
     "Only events on the **archive** tab in the roster sheet are listed here (after the next GitHub push from Sheets). "
-    "**Issued** = emails have gone out; **Not issued yet** = still within the usual window; "
-    "**Not published** = the team has not set a status for this row yet."
+    "Optional columns **Event Date** and **Issued Date** on that tab appear in the table when present. "
+    "**Badge status:** **Issued** = emails sent; **Not issued yet** = usual window; **Not published** = not set yet."
 )
+
+
+def _cell(val: str | None) -> str:
+    return val if val else "—"
 
 
 def _status_label(v: bool | None) -> str:
@@ -35,7 +39,12 @@ if not archived:
     st.stop()
 
 rows = [
-    {"Event": name, "Badge status": _status_label(rec["badges_issued"])}
+    {
+        "Event": name,
+        "Event date": _cell(rec.get("event_date")),
+        "Issued date": _cell(rec.get("issued_date")),
+        "Badge status": _status_label(rec["badges_issued"]),
+    }
     for name, rec in sorted(archived.items(), key=lambda x: x[0].lower())
 ]
 
@@ -45,6 +54,8 @@ st.dataframe(
     use_container_width=True,
     column_config={
         "Event": st.column_config.TextColumn("Event", width="large"),
+        "Event date": st.column_config.TextColumn("Event date", width="small"),
+        "Issued date": st.column_config.TextColumn("Issued date", width="small"),
         "Badge status": st.column_config.TextColumn("Badge status", width="small"),
     },
 )

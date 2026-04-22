@@ -7,6 +7,7 @@
 //   4. Click "GitHub Sync > Push events to GitHub" whenever you want to update the app
 //
 // Optional column: "Badges issued" — Yes/TRUE = badges sent; No/FALSE = not yet; blank = unknown (Badge status page).
+// Optional columns (archive tab recommended): "Event Date", "Issued Date" — shown on Badge status (YYYY-MM-DD when parsed as dates).
 //
 // Archive: set SHEET_ARCHIVE to your archive tab name so expired rows stay in events.json (e.g. badge status).
 // Main tab order is preserved; archived events appear after, only if not already on the main tab.
@@ -143,6 +144,8 @@ function sheetToEvents_(sheet) {
   var nameCol = headers.indexOf("Event Name");
   var urlCol = headers.indexOf("Final URL");
   var badgeCol = headers.indexOf("Badges issued");
+  var eventDateCol = headers.indexOf("Event Date");
+  var issuedDateCol = headers.indexOf("Issued Date");
 
   if (nameCol === -1 || urlCol === -1) {
     throw new Error("Tab \"" + sheet.getName() + "\" must have columns: Event Name, Final URL");
@@ -160,9 +163,30 @@ function sheetToEvents_(sheet) {
     if (badgeCol !== -1) {
       row["Badges issued"] = parseBadgesIssued_(data[i][badgeCol]);
     }
+    if (eventDateCol !== -1) {
+      row["Event Date"] = formatDateCell_(data[i][eventDateCol]);
+    }
+    if (issuedDateCol !== -1) {
+      row["Issued Date"] = formatDateCell_(data[i][issuedDateCol]);
+    }
     events.push(row);
   }
   return events;
+}
+
+/**
+ * @param {*} cell
+ * @returns {string|null} ISO-style date or trimmed text; null if empty
+ */
+function formatDateCell_(cell) {
+  if (cell === "" || cell === null || cell === undefined) {
+    return null;
+  }
+  if (Object.prototype.toString.call(cell) === "[object Date]" && !isNaN(cell)) {
+    return Utilities.formatDate(cell, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  var s = String(cell).trim();
+  return s || null;
 }
 
 /** Main list first (order kept); then archive rows whose Event Name is not already present. Tags Archived for the app. */
