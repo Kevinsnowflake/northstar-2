@@ -10,6 +10,7 @@
 //
 // Archive: set SHEET_ARCHIVE to your archive tab name so expired rows stay in events.json (e.g. badge status).
 // Main tab order is preserved; archived events appear after, only if not already on the main tab.
+// Each row gets JSON "Archived": false (main tab) or true (archive tab only) — Badge status page lists archived only.
 
 var SHEET_MAIN = "";       // "" = whichever tab is active when you push (legacy). Or e.g. "Events" to always use that tab.
 var SHEET_ARCHIVE = "";    // e.g. "Archive" — same columns as main (Event Name, Final URL, optional Badges issued). "" = off.
@@ -164,7 +165,7 @@ function sheetToEvents_(sheet) {
   return events;
 }
 
-/** Main list first (order kept); then archive rows whose Event Name is not already present. */
+/** Main list first (order kept); then archive rows whose Event Name is not already present. Tags Archived for the app. */
 function mergeEventsMainThenArchive_(mainEvents, archiveEvents) {
   var seen = {};
   var out = [];
@@ -172,13 +173,13 @@ function mergeEventsMainThenArchive_(mainEvents, archiveEvents) {
   for (i = 0; i < mainEvents.length; i++) {
     var n = mainEvents[i]["Event Name"];
     seen[n] = true;
-    out.push(mainEvents[i]);
+    out.push(Object.assign({}, mainEvents[i], { Archived: false }));
   }
   for (i = 0; i < archiveEvents.length; i++) {
     var n2 = archiveEvents[i]["Event Name"];
     if (!seen[n2]) {
       seen[n2] = true;
-      out.push(archiveEvents[i]);
+      out.push(Object.assign({}, archiveEvents[i], { Archived: true }));
     }
   }
   return out;

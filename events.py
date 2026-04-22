@@ -38,6 +38,7 @@ def load_event_records() -> dict[str, dict[str, Any]]:
     Each value includes:
       - ``final_url``: str | None (trial signup link)
       - ``badges_issued``: bool | None — True if badges sent, False if not yet, None if unset
+      - ``archived``: bool — True if row came from the archive tab only (see Apps Script merge)
     """
     try:
         data = json.loads(_EVENTS_FILE.read_text())
@@ -49,9 +50,12 @@ def load_event_records() -> dict[str, dict[str, Any]]:
             name = str(name).strip()
             if not name:
                 continue
+            archived_raw = r.get("Archived", False)
+            archived = archived_raw is True or str(archived_raw).lower() in ("true", "1", "yes")
             out[name] = {
                 "final_url": r.get("Final URL") or None,
                 "badges_issued": _parse_badges_issued(r.get("Badges issued")),
+                "archived": archived,
             }
         return out
     except (json.JSONDecodeError, KeyError, TypeError):

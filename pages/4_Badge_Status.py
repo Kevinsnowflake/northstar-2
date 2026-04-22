@@ -7,7 +7,7 @@ from events import load_event_records
 st.title("🏅 Badge status")
 
 st.caption(
-    "Badge sending is updated from the workshop roster. "
+    "Only events on the **archive** tab in the roster sheet are listed here (after the next GitHub push from Sheets). "
     "**Issued** = emails have gone out; **Not issued yet** = still within the usual window; "
     "**Not published** = the team has not set a status for this row yet."
 )
@@ -22,13 +22,21 @@ def _status_label(v: bool | None) -> str:
 
 
 records = load_event_records()
+archived = {n: r for n, r in records.items() if r.get("archived")}
 if not records:
     st.info("No events are configured yet.", icon="ℹ️")
+    st.stop()
+if not archived:
+    st.info(
+        "No archived events yet. Move finished events to your **archive** tab in the Google Sheet, "
+        "then run **GitHub Sync → Push events to GitHub** (and ensure **SHEET_ARCHIVE** is set in Apps Script).",
+        icon="ℹ️",
+    )
     st.stop()
 
 rows = [
     {"Event": name, "Badge status": _status_label(rec["badges_issued"])}
-    for name, rec in sorted(records.items(), key=lambda x: x[0].lower())
+    for name, rec in sorted(archived.items(), key=lambda x: x[0].lower())
 ]
 
 st.dataframe(
