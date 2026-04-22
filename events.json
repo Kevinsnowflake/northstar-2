@@ -1,15 +1,18 @@
 [
   {
     "Event Name": "Australia Virtual D4B",
-    "Final URL": "https://signup.snowflake.com/?k=hol-snowflake-1616&t=d063cbe92edcb7508a9543ffb376d582a0ca03ca67c769390766955e45a3f19c&utm_campaign=northstar-d4b"
+    "Final URL": "https://signup.snowflake.com/?k=hol-snowflake-1616&t=d063cbe92edcb7508a9543ffb376d582a0ca03ca67c769390766955e45a3f19c&utm_campaign=northstar-d4b",
+    "Badges issued": true
   },
   {
     "Event Name": "Tokyo (4/21/2026)",
-    "Final URL": "https://signup.snowflake.com/?trial=student&cloud=aws&region=us-west-2&utm_source=workshop&utm_campaign=northstar-2026"
+    "Final URL": "https://signup.snowflake.com/?trial=student&cloud=aws&region=us-west-2&utm_source=workshop&utm_campaign=northstar-2026",
+    "Badges issued": false
   },
   {
     "Event Name": "London (4/23/2026)",
-    "Final URL": null
+    "Final URL": null,
+    "Badges issued": false
   },
   {
     "Event Name": "Osaka (4/23/2026)",
