@@ -1,17 +1,22 @@
 import streamlit as st
+import streamlit.components.v1 as components
 
-from app_bootstrap import init_app
+st.set_page_config(page_title="Redirecting…", layout="centered")
 
-init_app()
-st.session_state["_northstar_nav_root"] = True
+TARGET = "https://northstar.streamlit.app"
 
-pages = [
-    st.Page("home_page.py", title="Home", icon="❄️", default=True),
-    st.Page("pages/1_Trial_Sign_Up.py", title="Trial Sign Up", icon="📝"),
-    st.Page("pages/2_Guides_and_Answer_Keys.py", title="Guides & Answer Keys", icon="📚"),
-    st.Page("pages/3_Auto-Grader.py", title="Auto-Grader", icon="⚙️"),
-    st.Page("pages/4_Badge_Status.py", title="Badge status", icon="🏅"),
-]
-
-nav = st.navigation(pages)
-nav.run()
+components.html(
+    f"""
+    <script>
+      window.top.location.href = "{TARGET}";
+    </script>
+    <noscript>
+      <meta http-equiv="refresh" content="0; url={TARGET}">
+    </noscript>
+    <p style="font-family: system-ui;">
+      If you are not redirected automatically,
+      <a href="{TARGET}">open Northstar here</a>.
+    </p>
+    """,
+    height=120,
+)
