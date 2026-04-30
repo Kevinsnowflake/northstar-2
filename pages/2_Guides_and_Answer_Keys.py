@@ -1,18 +1,55 @@
 import streamlit as st
 
+from workshops import load_workshop_rows
+
+
+def _md_cell(text: str) -> str:
+    """Escape pipe characters so markdown table cells stay valid."""
+    return (text or "").replace("|", "\\|")
+
 st.title("📚 Workshop Guides and Answer Keys")
 st.markdown(
     "Follow along with the guide for your workshop, then run the answer key script "
-    "in a Snowflake SQL worksheet to grade your work."
+    "in a Snowflake SQL worksheet to grade your work. Rows can appear before links are ready — "
+    "missing URLs show **Coming soon** (or your custom placeholder text from the sheet)."
 )
-st.markdown(
-    """
-| Workshop | Guide | Answer Key |
-|----------|-------|------------|
-| Data Ingestion, Transformation, and Delivery with Snowflake | [View Guide](https://www.snowflake.com/en/developers/guides/snowflake-northstar-data-engineering/) | [ingestion-transformation-delivery.sql](https://github.com/Snowflake-Labs/builder-workshops/blob/main/data-eng/ingestion-transformation-delivery.sql) |
-| Build an Automated Data Pipeline with Snowpipe | [View Guide](https://www.snowflake.com/en/developers/guides/getting-started-with-snowpipe/) | [snowpipe-streaming.sql](https://github.com/Snowflake-Labs/builder-workshops/blob/main/data-eng/snowpipe-streaming.sql) |
-| Building Intelligent Data Application with Snowflake | [View Guide](https://www.snowflake.com/en/developers/guides/getting-started-with-snowflake-intelligence/) | [snowflake-intelligence.sql](https://github.com/Snowflake-Labs/builder-workshops/blob/main/gen-ai/snowflake-intelligence.sql) |
-| Creating Declarative Data Pipelines with Dynamic Tables | [View Guide](https://www.snowflake.com/en/developers/guides/create-declarative-data-pipelines-with-dynamic-tables/) | [dynamic-tables.sql](https://github.com/Snowflake-Labs/builder-workshops/blob/main/data-eng/dynamic-tables.sql) |
-| From Zero to Agents: Building End-To-End Data Pipelines for an AI Agent (Data for Breakfast HOL) | [View Guide](https://www.snowflake.com/en/developers/guides/from-zero-to-agents/) | [zero-agent.sql](https://github.com/Snowflake-Labs/builder-workshops/blob/main/gen-ai/zero-agent.sql) |
-    """.strip()
-)
+
+rows = load_workshop_rows()
+if not rows:
+    st.info(
+        "No workshops are configured yet. Add a **Guides & Answer Keys** tab to your Google Sheet "
+        "(see column headers below), set **SHEET_GUIDES** in Apps Script to that tab’s name, then run "
+        "**GitHub Sync → Push events & guides to GitHub**, or edit **workshops.json** in this repository.",
+        icon="ℹ️",
+    )
+    st.markdown(
+        """
+**Sheet tab (when using sync):** create a tab (e.g. `Guides & Answer Keys`) and set `SHEET_GUIDES` in Apps Script to match its name.
+
+| Column | Required |
+|--------|----------|
+| **Workshop** | Yes — full title (must match Auto-Grader once an answer key exists) |
+| **Guide URL** | No — leave blank for **Coming soon** in the Guide column |
+| **Answer Key URL** | No — leave blank until the script is ready (**Coming soon** on the page; row stays out of the Auto-Grader list until filled) |
+| **Guide link text** | No — link label when Guide URL is set (default `View Guide`) |
+| **Answer Key link text** | No — link label when Answer Key URL is set (default: file name from URL) |
+| **Guide placeholder** | No — overrides *Coming soon* when Guide URL is empty |
+| **Answer Key placeholder** | No — overrides *Coming soon* when Answer Key URL is empty |
+        """.strip()
+    )
+    st.stop()
+
+lines = ["| Workshop | Guide | Answer Key |", "|----------|-------|------------|"]
+for r in rows:
+    w = _md_cell(r["workshop"])
+    if (r.get("guide_url") or "").strip():
+        g = f"[{r['guide_label']}]({r['guide_url']})"
+    else:
+        g = _md_cell(r.get("guide_pending_text") or "Coming soon")
+    if (r.get("answer_key_url") or "").strip():
+        a = f"[{r['answer_key_label']}]({r['answer_key_url']})"
+    else:
+        a = _md_cell(r.get("answer_key_pending_text") or "Coming soon")
+    lines.append(f"| {w} | {g} | {a} |")
+
+st.markdown("\n".join(lines))
