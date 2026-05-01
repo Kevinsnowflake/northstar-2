@@ -6,19 +6,9 @@ import requests
 import streamlit as st
 import streamlit.components.v1 as components
 
-ANSWER_KEYS: dict[str, str] = {
-    "Data Ingestion, Transformation, and Delivery with Snowflake":
-        "https://raw.githubusercontent.com/Snowflake-Labs/builder-workshops/main/data-eng/ingestion-transformation-delivery.sql",
-    "Build an Automated Data Pipeline with Snowpipe":
-        "https://raw.githubusercontent.com/Snowflake-Labs/builder-workshops/main/data-eng/snowpipe-streaming.sql",
-    "Building Intelligent Data Application with Snowflake":
-        "https://raw.githubusercontent.com/Snowflake-Labs/builder-workshops/main/gen-ai/snowflake-intelligence.sql",
-    "Creating Declarative Data Pipelines with Dynamic Tables":
-        "https://raw.githubusercontent.com/Snowflake-Labs/builder-workshops/main/data-eng/dynamic-tables.sql",
-    "From Zero to Agents: Building End-To-End Data Pipelines for an AI Agent (Data for Breakfast HOL)":
-        "https://raw.githubusercontent.com/Snowflake-Labs/builder-workshops/main/gen-ai/zero-agent.sql",
-}
+from workshops import load_answer_key_map
 
+ANSWER_KEYS = load_answer_key_map()
 WORKSHOP_OPTIONS = ["None (auto-grader setup only)"] + list(ANSWER_KEYS.keys())
 
 st.title("⚙️ Auto-Grader/Answer Key")

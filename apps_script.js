@@ -4,7 +4,15 @@
 //   1. Paste this code
 //   2. Run setGitHubToken() once and enter your GitHub Personal Access Token when prompted
 //   3. Reload the sheet — a "GitHub Sync" menu will appear in the menu bar
-//   4. Click "GitHub Sync > Push events to GitHub" whenever you want to update the app
+//   4. Click "GitHub Sync > Push events & guides to GitHub" whenever you want to update the app
+//
+// REPO_OWNER + REPO_NAME must be the SAME GitHub repo Streamlit Community Cloud deploys from,
+// or pushes will update the wrong place and the app will never see new events.json / workshops.json.
+//
+// Guides & answer keys: set SHEET_GUIDES to your tab name. That tab is exported to workshops.json.
+// Required column: Workshop (or Workshop name). Guide URL / Answer Key URL optional — leave blank
+// for "Coming soon" on the app (optional Guide placeholder / Answer Key placeholder columns override).
+// Optional: Guide link text, Answer Key link text. Set SHEET_GUIDES to "" to skip workshops.json.
 //
 // Optional column: "Badges issued" — Yes/TRUE = badges sent; No/FALSE = not yet; blank = unknown (Badge status page).
 // Optional columns (archive tab recommended): "Event Date"; "Issued Date" (or "Date Issued", etc.) — Badge status table (YYYY-MM-DD when parsed as dates).
@@ -15,16 +23,19 @@
 
 var SHEET_MAIN = "";       // "" = whichever tab is active when you push (legacy). Or e.g. "Events" to always use that tab.
 var SHEET_ARCHIVE = "";    // e.g. "Archive" — same columns as main (Event Name, Final URL, optional Badges issued). "" = off.
+var SHEET_GUIDES = ""; // e.g. "Guides & Answer Keys" — tab exported to workshops.json. "" = skip (repo file unchanged).
 
-var REPO_OWNER = "Kevinsnowflake";
+var REPO_OWNER = "sfc-gh-kenguyen";
+// Sheet pushes JSON here — must match the GitHub repo Streamlit Community Cloud deploys from.
 var REPO_NAME  = "northstar";
 var FILE_PATH  = "events.json";
+var WORKSHOPS_FILE_PATH = "workshops.json";
 var BRANCH     = "main";
 
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("GitHub Sync")
-    .addItem("Push events to GitHub", "pushEventsToGitHub")
+    .addItem("Push events & guides to GitHub", "pushEventsToGitHub")
     .addToUi();
 }
 
@@ -83,19 +94,68 @@ function pushEventsToGitHub() {
     return;
   }
 
-  var sha = getCurrentFileSha(token);
-  var url = "https://api.github.com/repos/" + REPO_OWNER + "/" + REPO_NAME + "/contents/" + FILE_PATH;
+  var evRes = putRepoFile_(token, FILE_PATH, json, "Update events from Google Sheet");
+  if (evRes.code !== 200 && evRes.code !== 201) {
+    SpreadsheetApp.getUi().alert(
+      "GitHub API error (events.json, " + evRes.code + "): " + evRes.body
+    );
+    return;
+  }
 
+  var guidesMsg = "";
+  if (SHEET_GUIDES && String(SHEET_GUIDES).trim()) {
+    var guidesSheet = ss.getSheetByName(String(SHEET_GUIDES).trim());
+    if (!guidesSheet) {
+      guidesMsg =
+        "\n\nWorkshops tab not found: \"" +
+        SHEET_GUIDES +
+        "\" — workshops.json was not updated. Events push succeeded.";
+    } else {
+      var workshops;
+      try {
+        workshops = sheetToWorkshops_(guidesSheet);
+      } catch (e2) {
+        SpreadsheetApp.getUi().alert(String(e2.message || e2));
+        return;
+      }
+      var wjson = JSON.stringify(workshops, null, 2) + "\n";
+      var wRes = putRepoFile_(token, WORKSHOPS_FILE_PATH, wjson, "Update workshops from Google Sheet");
+      if (wRes.code !== 200 && wRes.code !== 201) {
+        SpreadsheetApp.getUi().alert(
+          "events.json OK, but workshops.json failed (" +
+            wRes.code +
+            "). Check tab columns and try again.\n" +
+            wRes.body
+        );
+        return;
+      }
+      guidesMsg = "\n\nGuides & answer keys (workshops.json) updated.";
+    }
+  }
+
+  SpreadsheetApp.getUi().alert(
+    "Pushed to GitHub successfully! The app will redeploy in ~1-2 minutes." + guidesMsg
+  );
+}
+
+/**
+ * @param {string} token
+ * @param {string} repoPath — path within repo, e.g. events.json
+ * @param {string} bodyText — file contents (UTF-8)
+ * @param {string} commitMessage
+ * @returns {{ code: number, body: string }}
+ */
+function putRepoFile_(token, repoPath, bodyText, commitMessage) {
+  var sha = getFileSha_(token, repoPath);
+  var url = "https://api.github.com/repos/" + REPO_OWNER + "/" + REPO_NAME + "/contents/" + repoPath;
   var payload = {
-    message: "Update events from Google Sheet",
-    content: Utilities.base64Encode(json, Utilities.Charset.UTF_8),
+    message: commitMessage,
+    content: Utilities.base64Encode(bodyText, Utilities.Charset.UTF_8),
     branch: BRANCH
   };
-
   if (sha) {
     payload.sha = sha;
   }
-
   var options = {
     method: "put",
     contentType: "application/json",
@@ -103,15 +163,8 @@ function pushEventsToGitHub() {
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   };
-
   var response = UrlFetchApp.fetch(url, options);
-  var code = response.getResponseCode();
-
-  if (code === 200 || code === 201) {
-    SpreadsheetApp.getUi().alert("Events pushed to GitHub successfully! The app will redeploy in ~1-2 minutes.");
-  } else {
-    SpreadsheetApp.getUi().alert("GitHub API error (" + code + "): " + response.getContentText());
-  }
+  return { code: response.getResponseCode(), body: response.getContentText() };
 }
 
 /**
@@ -214,6 +267,104 @@ function sheetToEvents_(sheet) {
 }
 
 /**
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet — Guides & Answer Keys tab
+ * @returns {Object[]} rows for workshops.json (keys match Python workshops.py)
+ */
+function sheetToWorkshops_(sheet) {
+  var data = sheet.getDataRange().getValues();
+  if (!data || data.length < 2) {
+    return [];
+  }
+  var headers = data[0];
+  var wCol = findHeaderCol_(headers, [
+    "Workshop",
+    "Workshop name",
+    "workshop name",
+    "Course",
+    "Course name",
+    "course name",
+    "Title",
+    "Workshop title"
+  ]);
+  var gCol = findHeaderCol_(headers, ["Guide URL", "Guide url", "guide url"]);
+  var aCol = findHeaderCol_(headers, [
+    "Answer Key URL",
+    "Answer key URL",
+    "answer key url",
+    "Answer Key url"
+  ]);
+  var glCol = findHeaderCol_(headers, ["Guide link text", "Guide Link Text", "guide link text"]);
+  var alCol = findHeaderCol_(headers, [
+    "Answer Key link text",
+    "Answer key link text",
+    "answer key link text"
+  ]);
+  var gpCol = findHeaderCol_(headers, [
+    "Guide placeholder",
+    "Guide status",
+    "guide placeholder",
+    "guide status"
+  ]);
+  var akpCol = findHeaderCol_(headers, [
+    "Answer Key placeholder",
+    "Answer key placeholder",
+    "answer key placeholder",
+    "Answer Key status",
+    "Answer key status"
+  ]);
+
+  if (wCol === -1) {
+    throw new Error(
+      'Tab "' +
+        sheet.getName() +
+        '" must have a title column: Workshop, Workshop name, Course name, or Title (header row 1).'
+    );
+  }
+
+  var rows = [];
+  var i;
+  for (i = 1; i < data.length; i++) {
+    var rowName = String(data[i][wCol]).trim();
+    if (!rowName) {
+      continue;
+    }
+    var guideUrl = gCol === -1 ? "" : String(data[i][gCol]).trim();
+    var answerUrl = aCol === -1 ? "" : String(data[i][aCol]).trim();
+    var obj = {
+      Workshop: rowName,
+      "Guide URL": guideUrl || "",
+      "Answer Key URL": answerUrl || ""
+    };
+    if (glCol !== -1) {
+      var gl = String(data[i][glCol]).trim();
+      if (gl) {
+        obj["Guide link text"] = gl;
+      }
+    }
+    if (alCol !== -1) {
+      var al = String(data[i][alCol]).trim();
+      if (al) {
+        obj["Answer Key link text"] = al;
+      }
+    }
+    if (gpCol !== -1) {
+      var gp = String(data[i][gpCol]).trim();
+      if (gp) {
+        obj["Guide placeholder"] = gp;
+      }
+    }
+    if (akpCol !== -1) {
+      var akp = String(data[i][akpCol]).trim();
+      if (akp) {
+        obj["Answer Key placeholder"] = akp;
+      }
+    }
+    rows.push(obj);
+  }
+  return rows;
+}
+
+/**
  * @param {*} cell
  * @returns {string|null} ISO-style date or trimmed text; null if empty
  */
@@ -282,8 +433,21 @@ function parseBadgesIssued_(cell) {
   return null;
 }
 
-function getCurrentFileSha(token) {
-  var url = "https://api.github.com/repos/" + REPO_OWNER + "/" + REPO_NAME + "/contents/" + FILE_PATH + "?ref=" + BRANCH;
+/**
+ * @param {string} token
+ * @param {string} repoPath — path within repo
+ * @returns {string|null}
+ */
+function getFileSha_(token, repoPath) {
+  var url =
+    "https://api.github.com/repos/" +
+    REPO_OWNER +
+    "/" +
+    REPO_NAME +
+    "/contents/" +
+    repoPath +
+    "?ref=" +
+    BRANCH;
   var options = {
     method: "get",
     headers: { "Authorization": "token " + token },
