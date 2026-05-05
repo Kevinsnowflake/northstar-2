@@ -8,12 +8,6 @@ import streamlit as st
 
 from repo_json import read_repo_json
 
-
-@st.cache_data(ttl=15, show_spinner=False)
-def _workshops_json_text() -> str:
-    """Short TTL dedupes multiple loaders (e.g. Guides + Auto-Grader) per rerun window."""
-    return read_repo_json("workshops.json")
-
 _GITHUB_BLOB_RE = re.compile(
     r"^https?://github\.com/([^/]+)/([^/]+)/blob/([^/]+)/(.+)$",
     re.IGNORECASE,
@@ -68,7 +62,7 @@ def load_workshop_rows() -> list[dict[str, str]]:
     **Answer Key placeholder** override that text per row.
     """
     try:
-        data = json.loads(_workshops_json_text())
+        data = json.loads(read_repo_json("workshops.json"))
     except FileNotFoundError:
         st.warning("workshops.json not found — add it via GitHub or sheet sync.", icon="⚠️")
         return []

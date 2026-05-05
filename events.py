@@ -8,12 +8,6 @@ import streamlit as st
 from repo_json import read_repo_json
 
 
-@st.cache_data(ttl=15, show_spinner=False)
-def _events_json_text() -> str:
-    """Short TTL dedupes ``init_app`` + page reads without rebooting after sheet sync."""
-    return read_repo_json("events.json")
-
-
 def _optional_str(raw: Any) -> str | None:
     if raw is None:
         return None
@@ -69,7 +63,7 @@ def load_event_records() -> dict[str, dict[str, Any]]:
       - ``issued_date``: str | None — optional, from sheet "Issued Date"
     """
     try:
-        data = json.loads(_events_json_text())
+        data = json.loads(read_repo_json("events.json"))
         out: dict[str, dict[str, Any]] = {}
         for r in data:
             name = r.get("Event Name")

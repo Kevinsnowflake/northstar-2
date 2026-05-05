@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import time
 import urllib.error
 import urllib.request
 
@@ -38,6 +39,13 @@ def _raw_base_url() -> str | None:
                 return str(v).strip().rstrip("/")
         except Exception:
             pass
+        try:
+            force = st.secrets.get("NORTHSTAR_FORCE_RAW_JSON", False)
+            if str(force).lower() in ("1", "true", "yes"):
+                owner, repo, branch = get_github_coords()
+                return f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}"
+        except Exception:
+            pass
         host = (st.context.headers.get("Host") or st.context.headers.get("host") or "").lower()
         if ".streamlit.app" in host or ".streamlit.cloud" in host:
             owner, repo, branch = get_github_coords()
@@ -54,7 +62,9 @@ def read_repo_json(relative_path: str) -> str:
 
     base = _raw_base_url()
     if base:
-        url = f"{base}/{relative_path}"
+        # Bust intermediaries that might reuse an older response for the same URL.
+        bust = int(time.time() * 1000)
+        url = f"{base}/{relative_path}?nocache={bust}"
         req = urllib.request.Request(
             url,
             headers={

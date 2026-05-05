@@ -22,10 +22,14 @@ After changing entrypoints, confirm each Community Cloud app’s **main file** i
 - Updated by **Apps Script → GitHub Contents API** (see `apps_script.js`).
 - The hosted app prefers **raw.githubusercontent.com** (see `repo_json.py`) so JSON changes do not depend on the container’s git checkout staying fresh.
 
-## Cached JSON reads (Streamlit)
+## Fresh JSON after sheet sync (no reboot)
 
-- ``events.py`` / ``workshops.py`` use ``@st.cache_data(ttl=15)`` on the raw JSON text so ``init_app`` and each page do not re-fetch on every fragment of the same rerun.
-- After a sheet sync, new data can take **up to ~15 seconds** to appear without a manual refresh, or refresh immediately to start a new script run (cache is per-process).
+- The app loads ``events.json`` / ``workshops.json`` from **raw.githubusercontent.com** whenever it detects Streamlit Community Cloud (host contains ``.streamlit.app`` or ``.streamlit.cloud``), so updates are **not** tied to the container’s git checkout.
+- Each read uses a **cache-busting query string** so CDNs do not serve an old body.
+- If the app URL is a **custom domain** that does **not** include ``.streamlit.app``, set either:
+  - ``NORTHSTAR_JSON_RAW_BASE`` in **Secrets** to  
+    ``https://raw.githubusercontent.com/<owner>/<repo>/<branch>`` (no trailing slash), or  
+  - ``NORTHSTAR_FORCE_RAW_JSON`` = ``true`` to use the same raw base as ``deploy.json`` without relying on the hostname.
 
 ## Local development
 
