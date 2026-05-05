@@ -20,10 +20,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("📝 Trial Sign Up")
-    st.markdown(
-        "Sign up for a Snowflake trial account for your event — **select your event on that page**. "
-        "Links that include a `?event=` parameter still pre-select your event."
-    )
+    st.markdown("Sign up for a Snowflake trial account for your event.")
     st.page_link("pages/1_Trial_Sign_Up.py", label="Go to Trial Sign Up", icon="➡️")
 
 with col2:
