@@ -1,7 +1,9 @@
 """Load ``events.json`` / ``workshops.json`` from GitHub when hosted on Streamlit Cloud.
 
 Community Cloud can serve an older git checkout in the container until reboot; fetching
-``raw.githubusercontent.com`` always reflects the latest commit on ``main`` after sheet sync.
+``raw.githubusercontent.com`` always reflects the latest commit after sheet sync.
+
+Coordinates come from ``deploy.json`` via ``deploy_config`` (single source of truth).
 """
 
 from __future__ import annotations
@@ -11,12 +13,9 @@ import pathlib
 import urllib.error
 import urllib.request
 
-_ROOT = pathlib.Path(__file__).resolve().parent
+from deploy_config import get_github_coords
 
-# Keep in sync with apps_script.js REPO_OWNER / REPO_NAME / BRANCH
-_DEFAULT_OWNER = "sfc-gh-kenguyen"
-_DEFAULT_REPO = "northstar"
-_DEFAULT_BRANCH = "main"
+_ROOT = pathlib.Path(__file__).resolve().parent
 
 
 def _raw_base_url() -> str | None:
@@ -41,17 +40,15 @@ def _raw_base_url() -> str | None:
             pass
         host = (st.context.headers.get("Host") or st.context.headers.get("host") or "").lower()
         if ".streamlit.app" in host or ".streamlit.cloud" in host:
-            return (
-                f"https://raw.githubusercontent.com/"
-                f"{_DEFAULT_OWNER}/{_DEFAULT_REPO}/{_DEFAULT_BRANCH}"
-            )
+            owner, repo, branch = get_github_coords()
+            return f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}"
     except Exception:
         pass
     return None
 
 
 def read_repo_json(relative_path: str) -> str:
-    """Return file text. Hosted Streamlit: GitHub raw ``main``; local dev: repo copy on disk."""
+    """Return file text. Hosted Streamlit: GitHub raw; local dev: repo copy on disk."""
     if os.environ.get("NORTHSTAR_READ_JSON_FROM_DISK", "").lower() in ("1", "true", "yes"):
         return (_ROOT / relative_path).read_text(encoding="utf-8")
 

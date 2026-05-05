@@ -1,2 +1,3 @@
-streamlit
-requests
+# Pinned for reproducible Streamlit Community Cloud installs.
+streamlit==1.57.0
+requests==2.32.5

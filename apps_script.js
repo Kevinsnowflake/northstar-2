@@ -6,8 +6,8 @@
 //   3. Reload the sheet — a "GitHub Sync" menu will appear in the menu bar
 //   4. Click "GitHub Sync > Push events & guides to GitHub" whenever you want to update the app
 //
-// REPO_OWNER + REPO_NAME must be the SAME GitHub repo Streamlit Community Cloud deploys from,
-// or pushes will update the wrong place and the app will never see new events.json / workshops.json.
+// GitHub owner/repo/branch: loaded from deploy.json (see repo deploy.json). Pushes must target
+// the same repo Streamlit Community Cloud deploys from, or the app will never see new JSON.
 //
 // Guides & answer keys: set SHEET_GUIDES to your tab name. That tab is exported to workshops.json.
 // Required column: Workshop (or Workshop name). Guide URL / Answer Key URL optional — leave blank
@@ -25,12 +25,60 @@ var SHEET_MAIN = "";       // "" = whichever tab is active when you push (legacy
 var SHEET_ARCHIVE = "";    // e.g. "Archive" — same columns as main (Event Name, Final URL, optional Badges issued). "" = off.
 var SHEET_GUIDES = ""; // e.g. "Guides & Answer Keys" — tab exported to workshops.json. "" = skip (repo file unchanged).
 
-var REPO_OWNER = "sfc-gh-kenguyen";
-// Sheet pushes JSON here — must match the GitHub repo Streamlit Community Cloud deploys from (northstar only).
-var REPO_NAME  = "northstar";
-var FILE_PATH  = "events.json";
+// Bootstrap: raw URL to deploy.json on the branch that contains it (edit when renaming org/repo).
+var NORTHSTAR_DEPLOY_JSON_URL =
+  "https://raw.githubusercontent.com/sfc-gh-kenguyen/northstar/main/deploy.json";
+
+// Used only if deploy.json cannot be fetched — keep in sync with deploy.json in the repo.
+var REPO_FALLBACK_OWNER = "sfc-gh-kenguyen";
+var REPO_FALLBACK_NAME = "northstar";
+var REPO_FALLBACK_BRANCH = "main";
+
+var FILE_PATH = "events.json";
 var WORKSHOPS_FILE_PATH = "workshops.json";
-var BRANCH     = "main";
+
+var _GH_OWNER;
+var _GH_REPO;
+var _GH_BRANCH;
+
+function fetchGithubTargetFromDeploy_() {
+  var res = UrlFetchApp.fetch(NORTHSTAR_DEPLOY_JSON_URL, {
+    muteHttpExceptions: true,
+    headers: { "Cache-Control": "no-cache" },
+  });
+  if (res.getResponseCode() !== 200) {
+    throw new Error(
+      "Could not load deploy.json (HTTP " + res.getResponseCode() + "). Check NORTHSTAR_DEPLOY_JSON_URL."
+    );
+  }
+  var j = JSON.parse(res.getContentText());
+  if (!j.github || !j.github.owner || !j.github.repo || !j.github.branch) {
+    throw new Error("deploy.json must include github.owner, github.repo, and github.branch");
+  }
+  return {
+    owner: String(j.github.owner).trim(),
+    repo: String(j.github.repo).trim(),
+    branch: String(j.github.branch).trim(),
+  };
+}
+
+function resolveGithubTarget_() {
+  try {
+    return fetchGithubTargetFromDeploy_();
+  } catch (e) {
+    return {
+      owner: REPO_FALLBACK_OWNER,
+      repo: REPO_FALLBACK_NAME,
+      branch: REPO_FALLBACK_BRANCH,
+    };
+  }
+}
+
+function setGithubContext_(gh) {
+  _GH_OWNER = gh.owner;
+  _GH_REPO = gh.repo;
+  _GH_BRANCH = gh.branch;
+}
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -85,6 +133,9 @@ function pushEventsToGitHub() {
   }
 
   var events = mergeEventsMainThenArchive_(mainEvents, archiveEvents);
+
+  var gh = resolveGithubTarget_();
+  setGithubContext_(gh);
 
   var json = JSON.stringify(events, null, 2) + "\n";
   var token = PropertiesService.getScriptProperties().getProperty("GITHUB_TOKEN");
@@ -147,11 +198,12 @@ function pushEventsToGitHub() {
  */
 function putRepoFile_(token, repoPath, bodyText, commitMessage) {
   var sha = getFileSha_(token, repoPath);
-  var url = "https://api.github.com/repos/" + REPO_OWNER + "/" + REPO_NAME + "/contents/" + repoPath;
+  var url =
+    "https://api.github.com/repos/" + _GH_OWNER + "/" + _GH_REPO + "/contents/" + repoPath;
   var payload = {
     message: commitMessage,
     content: Utilities.base64Encode(bodyText, Utilities.Charset.UTF_8),
-    branch: BRANCH
+    branch: _GH_BRANCH
   };
   if (sha) {
     payload.sha = sha;
@@ -441,13 +493,13 @@ function parseBadgesIssued_(cell) {
 function getFileSha_(token, repoPath) {
   var url =
     "https://api.github.com/repos/" +
-    REPO_OWNER +
+    _GH_OWNER +
     "/" +
-    REPO_NAME +
+    _GH_REPO +
     "/contents/" +
     repoPath +
     "?ref=" +
-    BRANCH;
+    _GH_BRANCH;
   var options = {
     method: "get",
     headers: { "Authorization": "token " + token },
